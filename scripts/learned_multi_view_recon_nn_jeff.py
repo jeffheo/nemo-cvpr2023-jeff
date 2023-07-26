@@ -395,47 +395,104 @@ if __name__ == '__main__':
     pred_dict = multi_view_model.get_preds()
     with open(f"render_data/{args.cam_type}/{args.nemo_cfg['videos']['names'][0]}_pred_dict.pkl", 'wb') as pkl_file:
         pickle.dump(pred_dict, pkl_file)
+
     smpl_trans = pred_dict['trans'][0]
-    droidslam_cam = multi_view_model.extrinsic_trans[0] 
+    droidslam_trans = multi_view_model.extrinsic_trans[0].squeeze(-1)
+    droidslam_rot = multi_view_model.extrinsic_rotmat[0]
     #add these three tensors to a dictionary
-    plot_dict = {'smpl_trans': smpl_trans, 'droidslam_cam': droidslam_cam}
+    plot_dict = {'smpl_trans': smpl_trans, 'droidslam_trans': droidslam_trans, 'droidslam_rot': droidslam_rot}
     #save the dictionary as a pickle file
     with open(f"trans_map/{args.cam_type}/{args.nemo_cfg['videos']['names'][0]}_plot_dict.pkl", 'wb') as pkl_file:
         pickle.dump(plot_dict, pkl_file)
-    
-    fig = plt.figure(figsize=(10, 10))
+
+    rotation_matrices = droidslam_rot.cpu().detach().numpy()
+    translation_vectors = droidslam_trans.cpu().detach().numpy()
+    human_body = smpl_trans.cpu().detach().numpy()
+
+    rotation_matrices = rotation_matrices[::80]
+    translation_vectors = translation_vectors[::80]
+    human_body = human_body[::80]
+
+    num_frames = rotation_matrices.shape[0]
+
+    fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    body_pos = smpl_trans.cpu().detach().numpy()
-    camera_pos = droidslam_cam.cpu().detach().numpy()
-    # Create an array to represent the size of each point
-    time = np.arange(body_pos.shape[0])
-    point_sizes = time   # adjust the scaling factor as needed
-    print("shape of body_pos: ", body_pos.shape)
-    print("shape of camera_pos: ", camera_pos.shape)
+    # Define the size of the dots to increase linearly over time
+    dot_sizes = np.linspace(10, 100, num_frames)
 
-    # Plot every 10 frames
-    body_pos = body_pos[::80]
-    camera_pos = camera_pos[::80]
-    point_sizes = point_sizes[::80]
+    # Plot the camera's position over time with increasing dot size
+    ax.scatter(translation_vectors[:, 0], 
+            translation_vectors[:, 1], 
+            translation_vectors[:, 2], 
+            s=dot_sizes, c='r', label='Camera Position')
 
-    
-    ax.scatter(body_pos[:, 0], body_pos[:, 1], body_pos[:, 2], 
-               c='r', 
-               s=point_sizes, edgecolors='r', depthshade=True, alpha=0.7)
+    # Plot the human's position over time with increasing dot size
+    ax.scatter(human_body[:, 0], 
+            human_body[:, 1], 
+            human_body[:, 2], 
+            s=dot_sizes, c='b', label='Human Position')
 
-    ax.scatter(camera_pos[:, 0], camera_pos[:, 1], camera_pos[:, 2], 
-               c='b', 
-               s=point_sizes, edgecolors='b', depthshade=True, alpha=0.7)
+    # Inverse rotation matrices to convert to world-to-camera scenario
+    rotation_matrices = np.transpose(rotation_matrices, axes=(0, 2, 1))
 
+    # Calculate look-at points
+    look_at_points = np.matmul(rotation_matrices, np.array([0, 0, 1]))
+
+    # Plot lines to represent the camera's orientation
+    for i in range(num_frames):
+        ax.quiver(translation_vectors[i, 0], 
+                translation_vectors[i, 1], 
+                translation_vectors[i, 2],
+                look_at_points[i, 0],
+                look_at_points[i, 1],
+                look_at_points[i, 2],
+                color='r')
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.legend(['Body Movement', 'Camera'])
-    plt.title('3D trajectory of body and camera motion')
-    fig.savefig(f"trans_map/{args.cam_type}/{args.nemo_cfg['videos']['names'][0]}_trajectory.png", dpi=500)    
+    ax.legend()
+
     plt.show()
+    fig.savefig(f"trans_map/{args.cam_type}/{args.nemo_cfg['videos']['names'][0]}_trajectory.png", dpi=500)
+
+
+
+    
+    # fig = plt.figure(figsize=(10, 10))
+    # ax = fig.add_subplot(111, projection='3d')
+
+    # body_pos = smpl_trans.cpu().detach().numpy()
+    # camera_pos = droidslam_cam.cpu().detach().numpy()
+    # # Create an array to represent the size of each point
+    # time = np.arange(body_pos.shape[0])
+    # point_sizes = time   # adjust the scaling factor as needed
+    # print("shape of body_pos: ", body_pos.shape)
+    # print("shape of camera_pos: ", camera_pos.shape)
+
+    # # Plot every 10 frames
+    # body_pos = body_pos[::80]
+    # camera_pos = camera_pos[::80]
+    # point_sizes = point_sizes[::80]
+
+    
+    # ax.scatter(body_pos[:, 0], body_pos[:, 1], body_pos[:, 2], 
+    #            c='r', 
+    #            s=point_sizes, edgecolors='r', depthshade=True, alpha=0.7)
+
+    # ax.scatter(camera_pos[:, 0], camera_pos[:, 1], camera_pos[:, 2], 
+    #            c='b', 
+    #            s=point_sizes, edgecolors='b', depthshade=True, alpha=0.7)
+
+
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
+    # ax.set_zlabel('Z')
+    # ax.legend(['Body Movement', 'Camera'])
+    # plt.title('3D trajectory of body and camera motion')
+    # fig.savefig(f"trans_map/{args.cam_type}/{args.nemo_cfg['videos']['names'][0]}_trajectory.png", dpi=500)    
+    # plt.show()
 
     # j = ravel_first_2dims(pred_dict['j'])
     # view_idx = ravel_first_2dims(pred_dict['view_idx'])
