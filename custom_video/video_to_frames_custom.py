@@ -9,7 +9,7 @@ import argparse
 # accept command line arguments, including action name and number of videos
 parser = argparse.ArgumentParser()
 parser.add_argument('--action', type=str, default='tennis_swing')
-parser.add_argument('--num_videos', type=int, default=6)
+parser.add_argument('--index', type=int, default=6)
 args = parser.parse_args()
 
 def video_to_images(vid_file, img_folder=None, return_info=False):
@@ -33,10 +33,10 @@ def video_to_images(vid_file, img_folder=None, return_info=False):
         return img_folder
 
 def main():
-	for action, index in tqdm(product([args.action], range(args.num_videos))): # replace with your own actions and indices
-		vid_name = f"{action}.{index}.mp4"
-		output_folder = f"{action}.{index}.frames"
-		video_to_images(osp.join('data/videos/', vid_name), osp.join('data/exps/', output_folder))
+	#for action, index in tqdm(product([args.action], range(args.num_videos))): # replace with your own actions and indices
+    vid_name = f"{args.action}.{args.index}.mp4"
+    output_folder = f"{args.action}.{args.index}.frames"
+    video_to_images(osp.join('data/videos/', vid_name), osp.join('data/exps/', output_folder))
 
 if __name__ == '__main__':
 	main()

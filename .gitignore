@@ -153,4 +153,5 @@ dmypy.json
 
 /custom_video/data/
 /custom_video/out/
-
+/custom_video/dump/
+/custom_vid/

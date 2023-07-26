@@ -1,0 +1,5 @@
+exp_dir: "/pasteur/u/jeffheo/projects/nemo-cvpr2023-jeff-old/data/exps/moving_tennis_swing"
+format: "release"
+videos:
+  root_dir: "/pasteur/u/jeffheo/projects/nemo-cvpr2023-jeff-old/data/videos/jeff/moving"
+  names: ["walking.0"]
